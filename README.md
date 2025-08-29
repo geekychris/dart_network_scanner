@@ -1,194 +1,409 @@
-# Network Scanner Flutter App
+# Network Scanner
 
-A Flutter application that scans your local network to discover devices and their running services, similar to "IP Scanner Pro".
+A powerful, cross-platform network discovery and port scanning application built with Flutter. This app provides comprehensive network analysis capabilities with an intuitive user interface, supporting macOS, Linux, and Windows desktop platforms.
 
-## Features
+## 🚀 Purpose
 
-- **Network Discovery**: Automatically detects your local network and scans for active devices
-- **Service Detection**: Identifies running services on discovered hosts by scanning common ports
-- **Device Information**: Shows hostname, IP address, response time, and MAC address (when available)
-- **Real-time Scanning**: Live progress updates during network scans
-- **Device Details**: Detailed view of each discovered device with service information
-- **Sort & Filter**: Multiple sorting options for discovered hosts
-- **Cross-Platform**: Runs on iOS, Android, macOS, and other Flutter-supported platforms
+Network Scanner is designed to help network administrators, security professionals, and IT enthusiasts discover and analyze devices on their local network. The app provides:
 
-## How to Use
+- **Network Device Discovery**: Automatically detects active hosts on your local network
+- **Port Scanning**: Identifies open ports and running services on discovered devices
+- **Service Detection**: Recognizes common services and provides detailed descriptions
+- **Multi-Method Discovery**: Uses ARP table lookup, TCP connections, and ICMP ping for comprehensive host detection
+- **Copy-to-Clipboard**: Easy data export with one-click copying of host information and service details
+- **Real-time Updates**: Live scanning with progress indicators and real-time results
 
-1. **Launch the App**: The app will automatically detect your current network information
-2. **Start Scanning**: Tap the "Start Scan" button to begin discovering devices
-3. **View Progress**: Monitor the scanning progress in real-time
-4. **Browse Results**: View discovered devices in the main list
-5. **Device Details**: Tap on any device to see detailed information and services
-6. **Refresh**: Use the refresh button to rescan specific devices or clear all results
+## 🏗️ Architecture & Design
 
-## Installation
+### Core Components
 
-1. Ensure Flutter is installed on your system
-2. Run `flutter pub get` to install dependencies
-3. Run `flutter run` to start the app
+#### 1. **Network Discovery Engine**
+- **Primary Scanner**: Fast network discovery using platform-specific methods
+- **Fallback TCP Scanner**: Socket-based scanning for comprehensive coverage
+- **ARP Table Integration**: Leverages system ARP tables for MAC address and hostname resolution
+- **Multi-phase Scanning**: Two-phase approach for optimal speed and accuracy
 
-## Building
+#### 2. **Service Detection**
+The app scans a comprehensive list of common ports including:
+- Web services (HTTP/HTTPS: 80, 443, 8080, 8443)
+- Remote access (SSH: 22, RDP: 3389, VNC: 5900)
+- File sharing (SMB: 445, FTP: 21, AFP: 548)
+- Databases (MySQL: 3306, PostgreSQL: 5432)
+- IoT and smart home protocols (MQTT: 1883)
+- And many more...
 
-### macOS
+#### 3. **User Interface**
+- **Material Design 3**: Modern, responsive UI following Flutter's latest design guidelines
+- **Responsive Layout**: Adapts to different screen sizes and orientations
+- **Real-time Progress**: Live scan progress with percentage completion
+- **Detailed Host Views**: Comprehensive host information with service breakdowns
+- **Copy Functionality**: Multiple copy options for easy data export
+
+#### 4. **Data Management**
+- **State Management**: Uses Provider pattern for efficient state management
+- **Host Models**: Structured data models for hosts, services, and network information
+- **Real-time Updates**: Live updates during scanning process
+
+### Security Considerations
+
+- **Network Permissions**: Requires appropriate network permissions for socket operations
+- **Sandbox Compatibility**: Designed to work within platform security sandboxes
+- **Local Network Only**: Focuses on local network discovery for security and performance
+- **No Data Collection**: All scanning is performed locally with no external data transmission
+
+## 🛠️ Prerequisites
+
+Before building the app, ensure you have:
+
+1. **Flutter SDK** (3.0.0 or later)
+   ```bash
+   flutter --version
+   ```
+
+2. **Platform-specific requirements**:
+   - **macOS**: Xcode 14.0+ with command line tools
+   - **Linux**: Build essentials, GTK development libraries
+   - **Windows**: Visual Studio 2019+ with C++ desktop development tools
+
+3. **Git** for version control
+
+## 📦 Installation & Setup
+
+### 1. Clone the Repository
 ```bash
-flutter build macos
+git clone <repository-url>
+cd network_scanner
 ```
 
-### iOS (requires Xcode)
+### 2. Install Dependencies
 ```bash
-flutter build ios
-```
-
-### Android (requires Android SDK)
-```bash
-flutter build apk
-```
-
-## Permissions
-
-### Android
-- `INTERNET`: Required for network communication
-- `ACCESS_NETWORK_STATE`: Required to detect network state  
-- `ACCESS_WIFI_STATE`: Required to get WiFi network information
-
-### iOS
-- `NSLocalNetworkUsageDescription`: Required for local network access
-
-## Architecture
-
-The app follows a clean, layered architecture:
-
-```
-lib/
-├── models/          # Data structures (Host, Service, ScanResult)
-├── services/        # Business logic (Network scanning, discovery)
-├── providers/       # State management (Provider pattern)
-├── screens/         # UI screens (Scanner, Host details)
-└── widgets/         # Reusable UI components
-```
-
-**Key Components:**
-- **NetworkScannerService**: Core scanning engine with ping and port detection
-- **NetworkInfoService**: Local network information and IP range calculation
-- **NetworkScanProvider**: State management with Provider pattern
-- **Responsive UI**: Material Design with real-time progress updates
-
-## Quick Start
-
-```bash
-# Clone and setup
-cd /path/to/project
 flutter pub get
+```
 
-# Run on macOS (recommended for development)
+### 3. Verify Setup
+```bash
+flutter doctor
+```
+Ensure all platforms you want to target show no issues.
+
+## 🔧 Build Instructions
+
+### Debug Builds
+
+Debug builds include debugging symbols and hot reload capability:
+
+#### macOS Debug
+```bash
+# Desktop app
 flutter run -d macos
 
-# Or run on other platforms
-flutter run -d ios      # iOS simulator
-flutter run -d android   # Android emulator
-flutter run -d chrome    # Web browser
+# Or build without running
+flutter build macos --debug
 ```
 
-## Key Features
+#### Linux Debug
+```bash
+# Desktop app
+flutter run -d linux
 
-### Network Discovery
-- Automatic local network detection
-- Ping-based host discovery with configurable timeouts
-- Concurrent scanning with intelligent batching
-- Hostname resolution and response time measurement
+# Or build without running
+flutter build linux --debug
+```
 
-### Service Detection
-- Port scanning for 18+ common services
-- Service identification (SSH, HTTP, HTTPS, databases, etc.)
-- Real-time service status updates
-- Detailed service descriptions and port information
+#### Windows Debug
+```bash
+# Desktop app
+flutter run -d windows
 
-### User Interface
-- Clean, intuitive Material Design interface
-- Real-time scanning progress with visual indicators
-- Sortable host list (by IP, hostname, response time, services)
-- Detailed host view with comprehensive service information
-- Pull-to-refresh and manual host refresh capabilities
+# Or build without running
+flutter build windows --debug
+```
 
-## Dependencies
+### Release Builds
 
-### Core Dependencies
-- **dart_ping** (^9.0.1): Network ping functionality
-- **network_info_plus** (^6.1.4): Network information access
-- **provider** (^6.1.2): State management
-- **permission_handler** (^11.3.1): Cross-platform permissions
-- **http** (^1.2.1): HTTP client for future enhancements
+Release builds are optimized for distribution:
 
-### Development Dependencies
-- **flutter_lints** (^5.0.0): Code quality and style enforcement
-- **flutter_test**: Testing framework
+#### macOS Release
+```bash
+# Build release version
+flutter build macos --release
 
-## Supported Platforms
+# The app will be located at:
+# build/macos/Build/Products/Release/network_scanner.app
+```
 
-| Platform | Status | Notes |
-|----------|--------|-------|
-| **macOS** | ✅ Fully Supported | Recommended for development |
-| **iOS** | ✅ Fully Supported | Requires local network permission |
-| **Android** | ✅ Fully Supported | Network permissions auto-granted |
-| **Web** | ⚠️ Limited | Browser security restrictions |
-| **Windows** | ✅ Supported | Desktop functionality |
-| **Linux** | ✅ Supported | Desktop functionality |
+To create a distributable DMG:
+```bash
+# Install create-dmg (if not already installed)
+brew install create-dmg
 
-## Documentation
+# Create DMG
+create-dmg \
+  --volname "Network Scanner" \
+  --window-pos 200 120 \
+  --window-size 600 300 \
+  --icon-size 100 \
+  --app-drop-link 450 120 \
+  "Network Scanner.dmg" \
+  "build/macos/Build/Products/Release/network_scanner.app"
+```
 
-- **[README_DETAILED.md](README_DETAILED.md)**: Comprehensive documentation with architecture details, extension guides, and advanced features
-- **[API Documentation](#)**: Auto-generated API docs (run `dart doc`)
-- **Inline Comments**: Detailed code documentation throughout the project
+#### Linux Release
+```bash
+# Build release version
+flutter build linux --release
 
-## Extending the App
+# The executable will be located at:
+# build/linux/x64/release/bundle/network_scanner
+```
 
-This app is designed to be easily extensible. See **[README_DETAILED.md](README_DETAILED.md)** for comprehensive guides on:
+To create a distributable package:
+```bash
+# For AppImage (requires appimagetool)
+# Create AppDir structure and use appimagetool
 
-- Adding new service types and port scanning
-- Implementing advanced host detection (OS fingerprinting, device types)
-- Creating network monitoring and real-time updates
-- Adding data export capabilities (CSV, JSON)
-- Building network topology visualization
-- Implementing Wake-on-LAN and SNMP integration
-- Performance optimization techniques
-- Testing strategies and best practices
+# For Snap package
+snapcraft
 
-## Common Use Cases
+# For Flatpak
+flatpak-builder build-dir com.example.network_scanner.yml
+```
 
-1. **Network Administration**: Discover devices and services on corporate networks
-2. **Home Network Management**: Monitor IoT devices and home automation
-3. **Security Assessment**: Identify open ports and running services
-4. **Troubleshooting**: Diagnose network connectivity and service issues
-5. **Device Inventory**: Catalog network-connected equipment
+#### Windows Release
+```bash
+# Build release version
+flutter build windows --release
 
-## Performance Notes
+# The executable will be located at:
+# build/windows/x64/runner/Release/network_scanner.exe
+```
 
-- **Scanning Speed**: ~20 IPs per second (configurable)
-- **Memory Usage**: ~50MB for 200+ discovered devices
-- **Battery Impact**: Optimized for mobile with intelligent batching
-- **Network Load**: Respectful scanning with rate limiting
+To create an installer:
+```bash
+# Using Inno Setup (install Inno Setup first)
+# Create an .iss script file and compile with:
+iscc installer_script.iss
 
-## Troubleshooting
+# Or use NSIS
+makensis installer_script.nsi
+```
+
+## 🔍 Platform-Specific Features
+
+### macOS
+- **Entitlements**: Configured with network client/server entitlements for socket operations
+- **Sandbox**: Compatible with App Store sandboxing requirements
+- **Code Signing**: Ready for code signing and notarization
+
+### Linux
+- **GTK Integration**: Native Linux desktop integration
+- **System Permissions**: Requires network access permissions
+- **Package Management**: Compatible with major Linux package managers
+
+### Windows
+- **Windows API**: Utilizes Windows networking APIs
+- **UAC Compatibility**: Designed to work without elevated privileges where possible
+- **Windows Defender**: Optimized to avoid false positives from security software
+
+## 🏃‍♂️ Running the App
+
+### Development Mode
+```bash
+# Hot reload enabled
+flutter run -d <platform>
+
+# With specific target
+flutter run -d macos    # macOS
+flutter run -d linux    # Linux
+flutter run -d windows  # Windows
+```
+
+### Profile Mode
+```bash
+# Performance profiling
+flutter run --profile -d <platform>
+```
+
+## 🧪 Testing
+
+### Unit Tests
+```bash
+flutter test
+```
+
+### Integration Tests
+```bash
+flutter test integration_test/
+```
+
+### Platform Testing
+```bash
+# Test on specific platform
+flutter test --platform <platform>
+```
+
+## 📁 Project Structure
+
+```
+network_scanner/
+├── lib/
+│   ├── main.dart                 # App entry point
+│   ├── models/                   # Data models
+│   │   ├── host.dart            # Host model
+│   │   ├── service.dart         # Service model
+│   │   └── network_info.dart    # Network information model
+│   ├── providers/                # State management
+│   │   └── network_scan_provider.dart
+│   ├── screens/                  # UI screens
+│   │   ├── home_screen.dart     # Main scanner interface
+│   │   └── host_details_screen.dart # Host details view
+│   ├── services/                 # Core services
+│   │   ├── network_scanner.dart # Main scanner interface
+│   │   ├── primary_scanner.dart # Primary discovery methods
+│   │   ├── fallback_scanner.dart # Socket-based fallback
+│   │   └── port_definitions.dart # Service definitions
+│   └── utils/                    # Utilities
+│       └── network_utils.dart   # Network helper functions
+├── macos/                        # macOS specific files
+├── linux/                       # Linux specific files
+├── windows/                      # Windows specific files
+├── test/                        # Unit tests
+├── integration_test/            # Integration tests
+└── pubspec.yaml                 # Dependencies and metadata
+```
+
+## 🔧 Configuration
+
+### Network Permissions
+
+#### macOS (macos/Runner/DebugProfile.entitlements & Release.entitlements)
+```xml
+<key>com.apple.security.network.client</key>
+<true/>
+<key>com.apple.security.network.server</key>
+<true/>
+```
+
+#### Linux
+No special configuration required for basic networking.
+
+#### Windows
+Ensure Windows Firewall allows the application if needed.
+
+### Customization
+
+#### Port Scanning Configuration
+Edit `lib/services/port_definitions.dart` to modify:
+- Scanned port ranges
+- Service definitions
+- Scanning timeouts
+- Batch sizes
+
+#### UI Customization
+Modify theme and styling in:
+- `lib/main.dart` - App theme configuration
+- Individual screen files for layout adjustments
+
+## 🎯 Key Features
+
+### Copy-to-Clipboard Functionality
+The app includes comprehensive copy functionality:
+- **Host Information**: Copy IP addresses, hostnames, and MAC addresses
+- **Service Details**: Copy individual port numbers, service names, and descriptions
+- **Complete Summaries**: Copy comprehensive host and service information
+- **Visual Feedback**: Floating snackbars confirm successful copy operations
+
+### Multi-Method Host Discovery
+- **ARP Table Scanning**: Fast discovery of hosts with MAC address resolution
+- **TCP Socket Scanning**: Comprehensive port scanning with service detection
+- **ICMP Ping**: Alternative connectivity verification
+- **Hostname Resolution**: Automatic DNS and mDNS hostname lookup
+
+### Advanced Service Detection
+Scans 50+ common ports including:
+- **Web Services**: HTTP (80), HTTPS (443), Alternative HTTP (8080, 8443)
+- **Remote Access**: SSH (22), RDP (3389), VNC (5900), TeamViewer (5938)
+- **File Sharing**: FTP (21), SFTP (22), SMB (445), AFP (548)
+- **Databases**: MySQL (3306), PostgreSQL (5432), MongoDB (27017)
+- **IoT/Smart Home**: MQTT (1883), Home Assistant (8123)
+- **Network Services**: DNS (53), DHCP (67), SNMP (161)
+- **Media**: Plex (32400), Kodi (8080), AirPlay (5000)
+
+## 🐛 Troubleshooting
 
 ### Common Issues
 
-**No devices found:**
-- Ensure device is connected to WiFi (not cellular)
-- Check that target devices respond to ping
-- Verify network permissions are granted
+#### Build Errors
+- **"Operation not permitted"**: Ensure network entitlements are properly configured (macOS)
+- **GTK errors**: Install GTK development libraries (Linux)
+  ```bash
+  # Ubuntu/Debian
+  sudo apt-get install libgtk-3-dev
+  
+  # Fedora
+  sudo dnf install gtk3-devel
+  ```
+- **Visual Studio errors**: Ensure C++ desktop development tools are installed (Windows)
 
-**Slow scanning:**
-- Reduce batch size in `NetworkScannerService`
-- Check network latency with manual ping tests
-- Consider scanning fewer ports initially
+#### Runtime Issues
+- **No hosts found**: Check network connectivity and permissions
+- **Slow scanning**: Adjust timeout values in scanner configuration
+- **Permission denied**: Run with appropriate network permissions
 
-**Build errors:**
+#### Performance Issues
+- **High CPU usage**: Reduce concurrent scanning batch sizes
+- **Memory leaks**: Ensure proper disposal of network connections
+- **UI freezing**: Verify async/await usage in scanning operations
+
+### Debug Commands
+
 ```bash
-flutter clean
-flutter pub get
-flutter doctor  # Check environment
+# Verbose output
+flutter run -v -d <platform>
+
+# Debug with inspector
+flutter run --debug -d <platform>
+
+# Performance analysis
+flutter run --profile -d <platform>
+
+# Build analysis
+flutter analyze
 ```
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature-name`
+3. Commit changes: `git commit -am 'Add new feature'`
+4. Push to branch: `git push origin feature-name`
+5. Submit a pull request
+
+### Development Guidelines
+
+- Follow Flutter/Dart style guidelines
+- Add tests for new functionality
+- Update documentation for API changes
+- Ensure cross-platform compatibility
+- Test on all target platforms before submitting
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🙏 Acknowledgments
+
+- Flutter team for the excellent cross-platform framework
+- Network security community for port scanning best practices
+- Contributors and testers who helped improve the application
+
+## 📞 Support
+
+For issues, feature requests, or questions:
+- Create an issue on the repository
+- Check existing documentation and troubleshooting guide
+- Review Flutter documentation for platform-specific issues
 
 ---
 
-**For detailed architecture documentation, extension guides, and advanced features, see [README_DETAILED.md](README_DETAILED.md)**
+**Note**: This application is intended for legitimate network administration and security analysis purposes. Users are responsible for ensuring compliance with applicable laws and network policies when using this software.

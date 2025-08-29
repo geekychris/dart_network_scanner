@@ -6,6 +6,19 @@ import '../services/network_scanner_service.dart';
 import '../services/fallback_scanner_service.dart';
 import '../services/network_info_service.dart';
 
+enum HostSortBy {
+  ipAddress,
+  hostname,
+  status,
+  lastSeen,
+  serviceCount,
+}
+
+enum SortOrder {
+  ascending,
+  descending,
+}
+
 class NetworkScanProvider with ChangeNotifier {
   final NetworkScannerService _scannerService = NetworkScannerService();
   final FallbackScannerService _fallbackScannerService = FallbackScannerService();

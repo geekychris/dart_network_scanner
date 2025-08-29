@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/host.dart';
 import '../models/service.dart';
@@ -36,11 +37,11 @@ class HostDetailsScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Host overview card
-                _buildHostOverview(currentHost),
+                _buildHostOverview(context, currentHost),
                 const SizedBox(height: 16),
                 
                 // Services section
-                _buildServicesSection(currentHost),
+                _buildServicesSection(context, currentHost),
                 const SizedBox(height: 16),
                 
                 // Additional information
@@ -53,7 +54,7 @@ class HostDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildHostOverview(Host host) {
+  Widget _buildHostOverview(BuildContext context, Host host) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -74,23 +75,93 @@ class HostDetailsScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        host.displayName,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
+                      GestureDetector(
+                        onTap: () => _copyToClipboard(context, host.displayName, 'Hostname copied'),
+                        child: Text(
+                          host.displayName,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
-                      Text(
-                        host.ipAddress,
-                        style: const TextStyle(
-                          fontFamily: 'monospace',
-                          fontSize: 16,
-                          color: Colors.grey,
+                      GestureDetector(
+                        onTap: () => _copyToClipboard(context, host.ipAddress, 'IP address copied'),
+                        child: Text(
+                          host.ipAddress,
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 16,
+                            color: Colors.grey,
+                          ),
                         ),
                       ),
                     ],
                   ),
+                ),
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert),
+                  onSelected: (value) {
+                    switch (value) {
+                      case 'copy_ip':
+                        _copyToClipboard(context, host.ipAddress, 'IP address copied');
+                        break;
+                      case 'copy_hostname':
+                        _copyToClipboard(context, host.displayName, 'Hostname copied');
+                        break;
+                      case 'copy_mac':
+                        if (host.macAddress != null) {
+                          _copyToClipboard(context, host.macAddress!, 'MAC address copied');
+                        }
+                        break;
+                      case 'copy_all':
+                        _copyHostSummary(context, host);
+                        break;
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: 'copy_ip',
+                      child: Row(
+                        children: [
+                          Icon(Icons.copy, size: 16),
+                          SizedBox(width: 8),
+                          Text('Copy IP Address'),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'copy_hostname',
+                      child: Row(
+                        children: [
+                          Icon(Icons.copy, size: 16),
+                          SizedBox(width: 8),
+                          Text('Copy Hostname'),
+                        ],
+                      ),
+                    ),
+                    if (host.macAddress != null)
+                      const PopupMenuItem(
+                        value: 'copy_mac',
+                        child: Row(
+                          children: [
+                            Icon(Icons.copy, size: 16),
+                            SizedBox(width: 8),
+                            Text('Copy MAC Address'),
+                          ],
+                        ),
+                      ),
+                    const PopupMenuItem(
+                      value: 'copy_all',
+                      child: Row(
+                        children: [
+                          Icon(Icons.copy_all, size: 16),
+                          SizedBox(width: 8),
+                          Text('Copy All Details'),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -169,7 +240,7 @@ class HostDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildServicesSection(Host host) {
+  Widget _buildServicesSection(BuildContext context, Host host) {
     final openServices = host.services.where((s) => s.isOpen).toList();
     
     return Card(
@@ -214,63 +285,115 @@ class HostDetailsScreen extends StatelessWidget {
   }
 
   Widget _buildServiceItem(Service service) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.blue.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              '${service.port}',
-              style: const TextStyle(
-                fontFamily: 'monospace',
-                fontWeight: FontWeight.bold,
-                color: Colors.blue,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  service.name,
+    return Builder(
+      builder: (context) => InkWell(
+        onTap: () => _copyServiceInfo(context, service),
+        onLongPress: () => _showServiceCopyOptions(context, service),
+        child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8.0),
+        child: Row(
+          children: [
+            GestureDetector(
+              onTap: () => _copyToClipboard(context, '${service.port}', 'Port ${service.port} copied'),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '${service.port}',
                   style: const TextStyle(
+                    fontFamily: 'monospace',
                     fontWeight: FontWeight.bold,
-                    fontSize: 16,
+                    color: Colors.blue,
                   ),
                 ),
-                Text(
-                  service.description,
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 14,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  GestureDetector(
+                    onTap: () => _copyToClipboard(context, service.name, 'Service name copied'),
+                    child: Text(
+                      service.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
                   ),
+                  GestureDetector(
+                    onTap: () => _copyToClipboard(context, service.description, 'Service description copied'),
+                    child: Text(
+                      service.description,
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_horiz, size: 16),
+              onSelected: (value) {
+                switch (value) {
+                  case 'copy_port':
+                    _copyToClipboard(context, '${service.port}', 'Port copied');
+                    break;
+                  case 'copy_service':
+                    _copyToClipboard(context, service.name, 'Service name copied');
+                    break;
+                  case 'copy_description':
+                    _copyToClipboard(context, service.description, 'Description copied');
+                    break;
+                  case 'copy_all':
+                    _copyServiceInfo(context, service);
+                    break;
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'copy_port',
+                  child: Text('Copy Port'),
+                ),
+                const PopupMenuItem(
+                  value: 'copy_service',
+                  child: Text('Copy Service Name'),
+                ),
+                const PopupMenuItem(
+                  value: 'copy_description',
+                  child: Text('Copy Description'),
+                ),
+                const PopupMenuItem(
+                  value: 'copy_all',
+                  child: Text('Copy Service Details'),
                 ),
               ],
             ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.green.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Text(
-              'Open',
-              style: TextStyle(
-                color: Colors.green,
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.green.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text(
+                'Open',
+                style: TextStyle(
+                  color: Colors.green,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
+      ),
       ),
     );
   }
@@ -339,5 +462,50 @@ class HostDetailsScreen extends StatelessWidget {
 
   String _formatDateTime(DateTime dateTime) {
     return '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}:${dateTime.second.toString().padLeft(2, '0')}';
+  }
+
+  /// Copy text to clipboard and show a snackbar
+  void _copyToClipboard(BuildContext context, String text, String message) {
+    Clipboard.setData(ClipboardData(text: text));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  /// Copy complete host summary to clipboard
+  void _copyHostSummary(BuildContext context, Host host) {
+    final services = host.services.where((s) => s.isOpen).toList();
+    final serviceList = services.map((s) => '${s.port} (${s.name} - ${s.description})').join('\n');
+    
+    final summary = '''
+Host Information:
+Hostname: ${host.displayName}
+IP Address: ${host.ipAddress}
+MAC Address: ${host.macAddress ?? 'Unknown'}
+Status: ${host.isOnline ? 'Online' : 'Offline'}
+Response Time: ${host.responseTime != null ? '${host.responseTime}ms' : 'N/A'}
+Last Seen: ${_formatDateTime(host.lastSeen)}
+Open Ports: ${host.openPortsCount}
+
+Services (${services.length}):
+$serviceList
+''';
+    
+    _copyToClipboard(context, summary, 'Host summary copied to clipboard');
+  }
+
+  /// Copy service information to clipboard
+  void _copyServiceInfo(BuildContext context, Service service) {
+    final serviceInfo = 'Port ${service.port}: ${service.name} - ${service.description}';
+    _copyToClipboard(context, serviceInfo, 'Service details copied');
+  }
+
+  /// Show service copy options (placeholder for future use)
+  void _showServiceCopyOptions(BuildContext context, Service service) {
+    _copyServiceInfo(context, service);
   }
 }

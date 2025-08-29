@@ -10,8 +10,22 @@ class FallbackScannerService {
   final NetworkInfoService _networkInfoService = NetworkInfoService();
   bool _isScanning = false;
   
-  /// Common ports to test for connectivity (also used as service detection)
-  static const List<int> connectivityPorts = [
+  /// Quick ports for initial connectivity test (most common)
+  static const List<int> quickPorts = [
+    80,    // HTTP - most devices have some web interface
+    22,    // SSH - very common
+    443,   // HTTPS
+    445,   // SMB
+    139,   // NetBIOS
+    135,   // Windows RPC
+    23,    // Telnet
+    21,    // FTP
+    8080,  // HTTP alternate
+    3389,  // RDP
+  ];
+  
+  /// Full comprehensive port list for detailed scans
+  static const List<int> allPorts = [
     22,    // SSH - very common
     80,    // HTTP - most devices have some web interface
     443,   // HTTPS
@@ -147,8 +161,8 @@ class FallbackScannerService {
       int scannedCount = 0;
       final totalAddresses = ipAddresses.length;
 
-      // Test connectivity using socket connections
-      const batchSize = 10; // Smaller batches for socket connections
+      // Test connectivity using socket connections with optimized batch processing
+      const batchSize = 20; // Larger batches for improved parallelism
       
       for (int i = 0; i < ipAddresses.length; i += batchSize) {
         if (!_isScanning) {
@@ -174,13 +188,13 @@ class FallbackScannerService {
           final progress = scannedCount / totalAddresses;
           onProgress?.call(progress);
           
-          if (scannedCount % 20 == 0) {
+          if (scannedCount % 40 == 0) {
             print('📊 Progress: ${(progress * 100).toInt()}% ($scannedCount/$totalAddresses)');
           }
         }
         
-        // Delay between batches to be network-friendly
-        await Future.delayed(const Duration(milliseconds: 200));
+        // Reduced delay between batches
+        await Future.delayed(const Duration(milliseconds: 100));
       }
       
       print('🎉 Scan completed! Processed $scannedCount addresses, found ${foundHosts.length} hosts');
@@ -191,7 +205,7 @@ class FallbackScannerService {
     }
   }
 
-  /// Test host connectivity using multiple approaches
+  /// Test host connectivity using optimized two-phase approach
   Future<Host?> _testHostConnectivity(String ipAddress) async {
     print('🔌 Testing connectivity to $ipAddress');
     
@@ -201,7 +215,8 @@ class FallbackScannerService {
       bool hostIsOnline = false;
       int? responseTime;
       
-      // First, check if device exists in ARP table
+      // Phase 1: Quick connectivity test
+      // First, check if device exists in ARP table (fastest method)
       final arpResult = await _checkArpTable(ipAddress);
       if (arpResult.exists) {
         hostIsOnline = true;
@@ -218,49 +233,23 @@ class FallbackScannerService {
             isOpen: true,
           ));
         }
-      }
-
-      // Always do a comprehensive TCP port scan for all devices (whether found via ARP or not)
-      print('  🔍 Scanning for services on $ipAddress...');
-      for (final port in connectivityPorts) {
-        try {
-          final socket = await Socket.connect(
-            ipAddress,
-            port,
-            timeout: const Duration(milliseconds: 1500), // Longer timeout for service detection
-          );
-          
-          if (!hostIsOnline) {
-            // First successful connection - host is online
-            stopwatch.stop();
-            responseTime = stopwatch.elapsedMilliseconds;
-            hostIsOnline = true;
-            print('  ✅ $ipAddress:$port - Connected! (${responseTime}ms)');
-          } else {
-            print('  ✅ $ipAddress:$port - Connected!');
-          }
-          
-          // Add this as an open service (avoid duplicate port 0 entries)
-          if (port > 0) {
-            openServices.add(Service(
-              port: port,
-              name: serviceNames[port] ?? 'Unknown',
-              description: _getServiceDescription(port),
-              isOpen: true,
-            ));
-          }
-          
-          await socket.close();
-        } catch (e) {
-          // Port is closed or filtered - this is normal for most ports
-          // Only log if we're in debug mode to reduce noise
-          // print('  ❌ $ipAddress:$port - ${e.toString().split(':').first}');
+        
+        // Phase 2: Since host is confirmed online via ARP, do comprehensive port scan
+        await _scanAllPorts(ipAddress, openServices);
+      } else {
+        // Host not in ARP table, try quick port scan first
+        hostIsOnline = await _quickPortScan(ipAddress, openServices, stopwatch);
+        
+        if (hostIsOnline) {
+          responseTime = stopwatch.elapsedMicroseconds ~/ 1000;
+          // Do full port scan since host is confirmed online
+          await _scanRemainingPorts(ipAddress, openServices);
         }
       }
 
-      // If we haven't found the host yet via ARP or TCP, try alternative connectivity tests
+      // If still not found, try alternative connectivity tests
       if (!hostIsOnline) {
-        print('  🔄 No TCP ports open, trying alternative connectivity tests...');
+        print('  🔄 No quick connectivity found, trying alternative methods...');
         hostIsOnline = await _tryAlternativeConnectivity(ipAddress);
         if (hostIsOnline) {
           stopwatch.stop();
@@ -269,7 +258,7 @@ class FallbackScannerService {
         }
       }
       
-      // Last resort: try ICMP ping
+      // Last resort: try ICMP ping (only if host still not found)
       if (!hostIsOnline) {
         final pingResult = await _pingHost(ipAddress);
         if (pingResult) {
@@ -295,13 +284,13 @@ class FallbackScannerService {
           try {
             print('  🔍 Resolving hostname for $ipAddress...');
             final result = await InternetAddress.lookup(ipAddress)
-                .timeout(const Duration(seconds: 2));
+                .timeout(const Duration(seconds: 1));
             if (result.isNotEmpty && result.first.host != ipAddress) {
               hostname = result.first.host;
               print('  📝 Hostname: $hostname');
             }
           } catch (e) {
-            print('  ⚠️ Hostname lookup failed: ${e.toString().split(':').first}');
+            // Skip hostname resolution on timeout to speed up scanning
           }
         } else {
           print('  📝 Hostname from ARP: $hostname');
@@ -326,6 +315,112 @@ class FallbackScannerService {
     }
     
     return null;
+  }
+  
+  /// Quick port scan using only the most common ports
+  Future<bool> _quickPortScan(String ipAddress, List<Service> openServices, Stopwatch stopwatch) async {
+    print('  ⚡ Quick port scan on $ipAddress...');
+    
+    // Test multiple ports concurrently for speed
+    final futures = quickPorts.map((port) => _testPort(ipAddress, port, Duration(milliseconds: 500)));
+    final results = await Future.wait(futures);
+    
+    bool foundAny = false;
+    for (int i = 0; i < results.length; i++) {
+      if (results[i]) {
+        final port = quickPorts[i];
+        if (!foundAny) {
+          stopwatch.stop();
+          foundAny = true;
+          print('  ✅ $ipAddress:$port - Connected! (quick scan)');
+        } else {
+          print('  ✅ $ipAddress:$port - Connected!');
+        }
+        
+        openServices.add(Service(
+          port: port,
+          name: serviceNames[port] ?? 'Unknown',
+          description: _getServiceDescription(port),
+          isOpen: true,
+        ));
+      }
+    }
+    
+    return foundAny;
+  }
+  
+  /// Scan remaining ports not covered in quick scan
+  Future<void> _scanRemainingPorts(String ipAddress, List<Service> openServices) async {
+    print('  🔍 Scanning remaining ports on $ipAddress...');
+    
+    // Get ports not already scanned in quick scan
+    final remainingPorts = allPorts.where((port) => !quickPorts.contains(port)).toList();
+    
+    // Test ports in smaller batches to avoid overwhelming the network
+    const batchSize = 8;
+    for (int i = 0; i < remainingPorts.length; i += batchSize) {
+      final batch = remainingPorts.skip(i).take(batchSize);
+      final futures = batch.map((port) => _testPort(ipAddress, port, Duration(milliseconds: 400)));
+      final results = await Future.wait(futures);
+      
+      for (int j = 0; j < results.length; j++) {
+        if (results[j]) {
+          final port = batch.elementAt(j);
+          print('  ✅ $ipAddress:$port - Connected!');
+          
+          openServices.add(Service(
+            port: port,
+            name: serviceNames[port] ?? 'Unknown',
+            description: _getServiceDescription(port),
+            isOpen: true,
+          ));
+        }
+      }
+      
+      // Small delay between batches
+      await Future.delayed(const Duration(milliseconds: 50));
+    }
+  }
+  
+  /// Scan all ports for hosts confirmed to be online via ARP
+  Future<void> _scanAllPorts(String ipAddress, List<Service> openServices) async {
+    print('  🔍 Full port scan on $ipAddress (ARP confirmed)...');
+    
+    // Since host is confirmed online via ARP, we can use more aggressive scanning
+    const batchSize = 10;
+    for (int i = 0; i < allPorts.length; i += batchSize) {
+      final batch = allPorts.skip(i).take(batchSize);
+      final futures = batch.map((port) => _testPort(ipAddress, port, Duration(milliseconds: 400)));
+      final results = await Future.wait(futures);
+      
+      for (int j = 0; j < results.length; j++) {
+        if (results[j]) {
+          final port = batch.elementAt(j);
+          print('  ✅ $ipAddress:$port - Connected!');
+          
+          openServices.add(Service(
+            port: port,
+            name: serviceNames[port] ?? 'Unknown',
+            description: _getServiceDescription(port),
+            isOpen: true,
+          ));
+        }
+      }
+      
+      // Small delay between batches
+      await Future.delayed(const Duration(milliseconds: 30));
+    }
+  }
+  
+  /// Test a single port with timeout
+  Future<bool> _testPort(String ipAddress, int port, Duration timeout) async {
+    try {
+      final socket = await Socket.connect(ipAddress, port, timeout: timeout);
+      await socket.close();
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
 
   /// Get service description for a port
