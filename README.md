@@ -13,6 +13,18 @@ Network Scanner is designed to help network administrators, security professiona
 - **Copy-to-Clipboard**: Easy data export with one-click copying of host information and service details
 - **Real-time Updates**: Live scanning with progress indicators and real-time results
 
+![img.png](img.png)
+The basic user experience once started.
+
+
+![img_1.png](img_1.png)
+A scan of the local network sorted by host.  Shows host name, ip and how many services are exposed.
+
+![img_2.png](img_2.png)
+
+A more detailed breakdown of the host including exposed ports.
+
+
 ## 🏗️ Architecture & Design
 
 ### Core Components
