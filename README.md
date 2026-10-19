@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.png" alt="Dart Network Scanner logo" width="180">
+</p>
+
 # Network Scanner
 
 A powerful, cross-platform network discovery and port scanning application built with Flutter. This app provides comprehensive network analysis capabilities with an intuitive user interface, supporting macOS, Linux, and Windows desktop platforms.
